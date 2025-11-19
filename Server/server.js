@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import  ACTIONS from "./Actions.js";
 import pythonRoutes from "./routes/pythonRoutes.js";
-
+import cors from "cors";
 
 dotenv.config();
 
@@ -16,6 +16,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*" },
 });
+
+app.use(cors());
 
 /* ---------- FIX __dirname FOR ES MODULE ---------- */
 const __filename = fileURLToPath(import.meta.url);

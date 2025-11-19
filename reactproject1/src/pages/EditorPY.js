@@ -5,6 +5,7 @@ import { initSocketPython } from "../socket";
 import toast from "react-hot-toast";
 import Client from "../components/Client";
 import EditorPython from "../components/EditorPY";
+import axios from "axios";
 
 const EditorPY = () => {
   const socketRef = useRef(null);
@@ -14,6 +15,10 @@ const EditorPY = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { roomId } = useParams();
+
+
+
+
 
   /** 🟢 SOCKET INITIALIZATION */
   useEffect(() => {
@@ -48,6 +53,24 @@ const EditorPY = () => {
     navigate("/");
   }
 
+
+  const pycodeExecutor= async()=> {
+try{
+  console.log("Executing Python Code:", codeRef.current);
+ const response=await axios.post("http://localhost:5000/api/python/run",{ code:codeRef.current});  
+ if(response){
+    console.log("Python Code Execution Response:", response);
+
+ }
+
+
+
+}catch(error){
+console.error("Error executing Python code:", error);
+}
+  }
+
+
   return (
     <div className="editorPage">
       {/* LEFT SIDEBAR */}
@@ -70,6 +93,10 @@ const EditorPY = () => {
           roomId={roomId}
           onCodeChange={(code) => (codeRef.current = code)}
         />
+
+        <button className="btn run-button" onClick={() => pycodeExecutor()}>
+          ▶️ Run Code
+        </button>
 
         <pre className="terminalOutput">
           🐍 Python Output will appear here once we add executor

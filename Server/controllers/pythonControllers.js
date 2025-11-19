@@ -7,7 +7,7 @@ export const runPython = async (req, res) => {
     if (!code) {
       return res.status(400).json({ error: "❗ No code provided" });
     }
-
+    console.log("🔥 Running Python Code:\n", code);
     const output = await runPythonInDocker(code);
     return res.json({ output });
 
