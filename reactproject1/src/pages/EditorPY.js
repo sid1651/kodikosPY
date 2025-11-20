@@ -11,6 +11,7 @@ const EditorPY = () => {
   const socketRef = useRef(null);
   const codeRef = useRef("");               // store latest code
   const [clients, setClients] = useState([]);
+  const [output,setOutput]=useState("");
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -60,6 +61,7 @@ try{
  const response=await axios.post("http://localhost:5000/api/python/run",{ code:codeRef.current});  
  if(response){
     console.log("Python Code Execution Response:", response);
+    setOutput(response.data.output);
 
  }
 
@@ -99,7 +101,10 @@ console.error("Error executing Python code:", error);
         </button>
 
         <pre className="terminalOutput">
-          🐍 Python Output will appear here once we add executor
+          <div>
+            Output:
+          </div>
+          {output}
         </pre>
       </div>
     </div>
