@@ -12,6 +12,7 @@ const EditorPY = () => {
   const codeRef = useRef("");               // store latest code
   const [clients, setClients] = useState([]);
   const [output,setOutput]=useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false); // Sidebar collapsed
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -72,21 +73,40 @@ console.error("Error executing Python code:", error);
 }
   }
 
+  const copyRoomId = async () => {
+    try {
+      await navigator.clipboard.writeText(roomId);
+      toast.success('Room ID copied!');
+    } catch {
+      toast.error('Failed to copy Room ID');
+    }
+  };
+
 
   return (
     <div className="editorPage">
       {/* LEFT SIDEBAR */}
-      <div className="aside">
-        <h3>👥 Users</h3>
-
-        {clients.map(({ socketId, username }) => (
-          <Client key={socketId} username={username} />
-        ))}
-
-        <button className="btn" onClick={leaveRoom}>
-          🚪 Leave
+      <aside className={`aside ${isCollapsed ? 'collapsed' : ''}`} style={{ height: '100vh' }}>
+        <button className="toggle-btn" onClick={() => setIsCollapsed(prev => !prev)}>
+          {isCollapsed ? '>' : '<'}
         </button>
-      </div>
+        {!isCollapsed && (
+          <div className="asideInner">
+            <div className="logo">
+              <img src="/logo-dark.png" alt="logo" className="logo" />
+              <h2>Kódikos</h2>
+            </div>
+            <h3>Connected Users</h3>
+            <div className="clientList">
+              {clients.map(client => <Client key={client.socketId} username={client.username} />)}
+            </div>
+            <div className="d-flex-row align-items-end justify-content-center">
+              <button className="btn copyBtn" onClick={copyRoomId}>Copy Room Id</button>
+              <button className="btn LeaveBtn" onClick={leaveRoom}>Exit Room</button>
+            </div>
+          </div>
+        )}
+      </aside>
 
       {/* RIGHT SIDE: EDITOR + OUTPUT */}
       <div className="editorRight">
