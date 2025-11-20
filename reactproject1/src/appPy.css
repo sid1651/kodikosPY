@@ -1,0 +1,101 @@
+/* --- PAGE WRAPPER (layout only) --- */
+.editorPage {
+  display: flex;
+  height: 100vh; 
+  width:100%;         /* full height */
+  background: #0f0f0f;
+  color: #fff;
+  font-family: "Inter", sans-serif;
+}
+
+/* --- RIGHT SECTION (editor area) --- */
+.editorRight {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 10px;
+  width:80%
+  
+}
+
+/* --- EDITOR CONTAINER --- */
+.editorcontaine {
+   flex: 1;
+  min-width: 320px;
+  
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.CodeMirror {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+/* Scrollbar styling (optional) */
+
+
+/* --- TERMINAL OUTPUT (kept as-is) --- */
+.terminalOutput {
+  background: #000;
+  color: #0aff9d;
+  padding: 12px;
+  height: 160px;
+  overflow-y: auto;
+  border-radius: 6px;
+  font-family: "Consolas", monospace;
+  font-size: 14px;
+  border: 1px solid #222;
+}
+
+.terminalOutput::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminalOutput::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 8px;
+}
+
+.terminalOutput::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* --- Large Screens (Default) --- */
+/* your normal .editorcontaine stays as it is */
+
+/* --- Tablets (width < 1024px) --- */
+@media (max-width: 1024px) {
+  .editorcontaine {
+    width: 90vw;        /* slightly smaller */
+    height: 70vh;       /* reduce height */
+  }
+}
+
+/* --- Small Tablets / Big Phones (width < 768px) --- */
+@media (max-width: 768px) {
+  .editorcontaine {
+    width: 95vw;
+    height: 65vh;
+  }
+}
+
+/* --- Mobile Phones (width < 480px) --- */
+@media (max-width: 480px) {
+  .editorcontaine {
+    width: 100vw;       /* full screen width */
+    height: 60vh;       /* shorter for mobile */
+  }
+}
+

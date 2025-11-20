@@ -2,6 +2,7 @@ import { BrowserRouter ,Routes,Route} from 'react-router-dom';
 import Home from './pages/Home';
 import EditorPage from './pages/EditorPage';
 import './App.css';
+import './appPy.css'
 import { Toaster } from 'react-hot-toast';
 import LandingPage from './pages/landingpage';
 import Signlog from './pages/signlog';
