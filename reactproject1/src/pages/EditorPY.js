@@ -9,20 +9,19 @@ import axios from "axios";
 
 const EditorPY = () => {
   const socketRef = useRef(null);
-  const codeRef = useRef("");               // store latest code
+
+  // Load saved code
+  const { roomId } = useParams();
+  const codeRef = useRef(localStorage.getItem(`pycode_${roomId}`) || "");
+
   const [clients, setClients] = useState([]);
-  const [output,setOutput]=useState("");
-  const [isCollapsed, setIsCollapsed] = useState(false); // Sidebar collapsed
+  const [output, setOutput] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { roomId } = useParams();
 
-
-
-
-
-  /** 🟢 SOCKET INITIALIZATION */
+  /** SOCKET INIT */
   useEffect(() => {
     async function initSocket() {
       socketRef.current = await initSocketPython();
@@ -39,11 +38,9 @@ const EditorPY = () => {
         setClients(clients);
       });
 
-      /** RECEIVE LIVE CODE UPDATES */
       socketRef.current.on(ACTIONS.CODE_CHANGE, ({ code }) => {
-        if (code !== null) {
-          codeRef.current = code;
-        }
+        codeRef.current = code;
+        localStorage.setItem(`pycode_${roomId}`, code);
       });
     }
 
@@ -55,65 +52,72 @@ const EditorPY = () => {
     navigate("/");
   }
 
+  const pycodeExecutor = async () => {
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND}/api/python/run`, {
+        code: codeRef.current,
+      });
 
-  const pycodeExecutor= async()=> {
-try{
-  console.log("Executing Python Code:", codeRef.current);
- const response=await axios.post("http://localhost:5000/api/python/run",{ code:codeRef.current});  
- if(response){
-    console.log("Python Code Execution Response:", response);
-    setOutput(response.data.output);
-
- }
-
-
-
-}catch(error){
-console.error("Error executing Python code:", error);
-}
-  }
+      if (response) {
+        setOutput(response.data.output);
+      }
+    } catch (error) {
+      console.error("Error executing Python code:", error);
+    }
+  };
 
   const copyRoomId = async () => {
     try {
       await navigator.clipboard.writeText(roomId);
-      toast.success('Room ID copied!');
+      toast.success("Room ID copied!");
     } catch {
-      toast.error('Failed to copy Room ID');
+      toast.error("Failed to copy Room ID");
     }
   };
-
 
   return (
     <div className="editorPage">
       {/* LEFT SIDEBAR */}
-      <aside className={`aside ${isCollapsed ? 'collapsed' : ''}`} style={{ height: '100vh' }}>
+      <aside className={`aside ${isCollapsed ? "collapsed" : ""}`} style={{ height: "100vh" }}>
         <button className="toggle-btn" onClick={() => setIsCollapsed(prev => !prev)}>
-          {isCollapsed ? '>' : '<'}
+          {isCollapsed ? ">" : "<"}
         </button>
+
         {!isCollapsed && (
           <div className="asideInner">
             <div className="logo">
               <img src="/logo-dark.png" alt="logo" className="logo" />
               <h2>Kódikos</h2>
             </div>
+
             <h3>Connected Users</h3>
             <div className="clientList">
-              {clients.map(client => <Client key={client.socketId} username={client.username} />)}
+              {clients.map(client => (
+                <Client key={client.socketId} username={client.username} />
+              ))}
             </div>
+
             <div className="d-flex-row align-items-end justify-content-center">
-              <button className="btn copyBtn" onClick={copyRoomId}>Copy Room Id</button>
-              <button className="btn LeaveBtn" onClick={leaveRoom}>Exit Room</button>
+              <button className="btn copyBtn" onClick={copyRoomId}>
+                Copy Room Id
+              </button>
+              <button className="btn LeaveBtn" onClick={leaveRoom}>
+                Exit Room
+              </button>
             </div>
           </div>
         )}
       </aside>
 
-      {/* RIGHT SIDE: EDITOR + OUTPUT */}
+      {/* EDITOR + OUTPUT */}
       <div className="editorRight">
         <EditorPython
           socketRef={socketRef}
           roomId={roomId}
-          onCodeChange={(code) => (codeRef.current = code)}
+          onCodeChange={(code) => {
+            codeRef.current = code;
+            localStorage.setItem(`pycode_${roomId}`, code);
+          }}
         />
 
         <button className="btn run-button" onClick={() => pycodeExecutor()}>
@@ -121,9 +125,7 @@ console.error("Error executing Python code:", error);
         </button>
 
         <pre className="terminalOutput">
-          <div>
-            Output:
-          </div>
+          <div>Output:</div>
           {output}
         </pre>
       </div>
