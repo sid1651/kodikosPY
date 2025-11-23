@@ -49,9 +49,9 @@
 /* --- TERMINAL OUTPUT (kept as-is) --- */
 .terminalOutput {
   background: #000;
-  color: #0aff9d;
+  color: #ffffff;
   padding: 12px;
-  height: 160px;
+  height: 40%;
   overflow-y: auto;
   border-radius: 6px;
   font-family: "Consolas", monospace;
@@ -72,10 +72,19 @@
   background: #555;
 }
 
-/* --- Large Screens (Default) --- */
-/* your normal .editorcontaine stays as it is */
+.run-button{
+  border :2px solid white ;
+  width: 20%;
+}
 
-/* --- Tablets (width < 1024px) --- */
+.buutton-holder{
+  display:flex;
+  flex-direction: row;
+  align-items: center;
+  gap:2rem;
+}
+
+
 @media (max-width: 1024px) {
   .editorcontaine {
     width: 90vw;        /* slightly smaller */

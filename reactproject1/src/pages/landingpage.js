@@ -1,10 +1,42 @@
 // src/pages/LandingPage.jsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
- // keep your styles
+import { GoogleLogin } from "@react-oauth/google";
+import axios from "axios";
+import { useDispatch } from "react-redux";
+import { login } from "../Redux/authSlice";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+   // <-- Redux hook
+
+  const handelSuccess = async (credentialResponse) => {
+    const token = credentialResponse.credential;
+    console.log("🟢 Google ID Token:", token);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:500/api/auth/google-auth",
+        { token }
+      );
+
+      const { user, jwtToken } = res.data;
+
+      // 🔥 Redux login
+      dispatch(
+        login({
+          user,
+          token: jwtToken,
+        })
+      );
+
+      alert("Login Successful!");
+      navigate("/home");
+    } catch (err) {
+      console.error("❌ Error:", err.response?.data || err.message);
+    }
+  };
 
   return (
     <div className="landing-page">
@@ -21,9 +53,15 @@ const LandingPage = () => {
         </ul>
 
         <div className="navbar-actions">
-          {/* use Link to avoid full reload */}
           <Link to="/sigin" className="btn-outline">Log In</Link>
           <Link to="/signup" className="btn-primary">Sign Up</Link>
+
+          <div className="googel-btn">
+            <GoogleLogin
+              onSuccess={handelSuccess}
+              onError={() => console.log("Login Failed")}
+            />
+          </div>
         </div>
       </nav>
 
@@ -33,13 +71,10 @@ const LandingPage = () => {
           <h1>Kódikos</h1>
           <img src="logo-dark.png" alt="Kódikos Logo" className="hero-logo" />
           <p>
-            The modern collaborative code editor where you can create, share, and
-            build projects together in real-time.
+            The modern collaborative code editor where you can create, share,
+            and build projects together in real-time.
           </p>
-          <button
-            className="btn-secondary"
-            onClick={() => navigate("/home")}
-          >
+          <button className="btn-secondary" onClick={() => navigate("/home")}>
             Create Room
           </button>
         </div>
@@ -61,7 +96,8 @@ const LandingPage = () => {
             <img src="https://img.icons8.com/color/344/code-file.png" alt="Languages" />
             <h3>Multi-Language Support</h3>
             <p>
-              From HTML, CSS, and JS to modern frameworks — code in your favorite stack.
+              From HTML, CSS, and JS to modern frameworks — code in your
+              favorite stack.
             </p>
           </div>
           <div className="feature-card">
@@ -93,10 +129,7 @@ const LandingPage = () => {
       <section className="cta" id="create-room">
         <h2>Ready to Start?</h2>
         <p>Create your coding room and invite your team today.</p>
-        <button
-          className="btn-secondary"
-          onClick={() => navigate("/home")}
-        >
+        <button className="btn-secondary" onClick={() => navigate("/home")}>
           Create Room
         </button>
       </section>

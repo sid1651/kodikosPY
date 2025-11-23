@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import  ACTIONS from "./Actions.js";
 import pythonRoutes from "./routes/pythonRoutes.js";
+import authRoute from "./routes/authRoute.js";
 import cors from "cors";
 
 dotenv.config();
@@ -95,6 +96,7 @@ setupNamespace("/py");
 
 
 app.use("/api/python", pythonRoutes);
+app.use("/api/auth",authRoute)
 
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, "build", "index.html"));

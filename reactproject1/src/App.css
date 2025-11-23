@@ -647,11 +647,18 @@ body {
 .clientList .clientItem:hover {
   background: #2e2e44;
 }
+.googel-btn{
+  
+  display:flex;
+  align-items: center;
+  
 
+}
 
 .aside.collapsed {
   width: 60px;
   padding: 20px 5px;
+  overflow: hidden;
 }
 
 .toggle-btn {
@@ -843,6 +850,7 @@ body {
   background: #fff;
   flex: 1;
 }
+
 
 
 
