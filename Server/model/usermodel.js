@@ -22,5 +22,5 @@ const userscema=mongoose.Schema({
 
 })
 
-const userScema=mongoose.model("User",userscema)
+const userScema=mongoose.model("User",userscema,"users")
  export default userScema;

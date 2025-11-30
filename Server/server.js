@@ -8,6 +8,7 @@ import  ACTIONS from "./Actions.js";
 import pythonRoutes from "./routes/pythonRoutes.js";
 import authRoute from "./routes/authRoute.js";
 import cors from "cors";
+import connectDb from "./config/db.js";
 
 dotenv.config();
 
@@ -27,7 +28,7 @@ const __dirname = path.dirname(__filename);
 /* ---------- MIDDLEWARE ---------- */
 app.use(express.static("build"));
 app.use(express.json());
-
+connectDb()
 
 const userSocketMap = {};
 

@@ -43,6 +43,13 @@ const EditorPY = () => {
         codeRef.current = code;
         localStorage.setItem(`pycode_${roomId}`, code);
       });
+
+      socketRef.current.on(ACTIONS.DISCONNECTED, ({ socketId, username }) => {
+        toast.success(`${username} has left the room`);
+        setClients((prev) =>
+          prev.filter((client) => client.socketId !== socketId)
+        );
+      });
     }
 
     initSocket();
@@ -93,17 +100,16 @@ const EditorPY = () => {
   };
 
   const downloadCode = (code, roomId) => {
-  const file = new Blob([code], { type: "text/plain" });
-  const url = URL.createObjectURL(file);
+    const file = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(file);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${roomId}.py`; // file name example: abc123.py
-  a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${roomId}.py`; // file name example: abc123.py
+    a.click();
 
-  URL.revokeObjectURL(url);
-};
-
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="editorPage">

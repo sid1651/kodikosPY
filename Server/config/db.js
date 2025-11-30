@@ -1,16 +1,23 @@
 import mongoose from 'mongoose';
 
-const connectDb=async()=>{
-    try{
-        mongoose.connection.on('connected',()=>console.log("conection succesfull"))
-        mongoose.connection.on('error',()=>console.log("conection failed"))
+const connectDb = async () => {
+  try {
+    mongoose.connection.on("connected", () =>
+      console.log("✅ MongoDB Connected")
+    );
 
+    mongoose.connection.on("error", (err) =>
+      console.log("❌ MongoDB Connection Error:", err)
+    );
 
-await mongoose.connect(process.env.MONGO_URI,{
-dbName:"calender",
-    })
-    }catch(error){
-        comnsole.log(error)
-    }
-    
-}
+    await mongoose.connect(process.env.MONGODB_URI, {
+      dbName: "Kodikos",   // ❗ Use your actual project DB
+      
+    });
+
+  } catch (error) {
+    console.log("❌ DB Connection Failed:", error);
+  }
+};
+
+export default connectDb;

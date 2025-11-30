@@ -3,6 +3,6 @@ import { googelAuth } from '../controllers/AuthenticationControllers.js'
 
 
 const router=express.Router()
-router.post('/googel-auth',googelAuth)
+router.post('/google-auth',googelAuth)
 
 export default router;

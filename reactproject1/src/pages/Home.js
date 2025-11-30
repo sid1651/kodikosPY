@@ -18,21 +18,35 @@ const Home = () => {
     toast.success('New Room Created');
   };
 
+  const isValidUUID = (id) => {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
+
   const joinRoom = () => {
-    if (!roomId || !username) {
-      toast.error('Room ID & Username required');
-      return;
-    }
+  if (!roomId || !username) {
+    toast.error('Room ID & Username required');
+    return;
+  }
 
-    if (!lang) {
-      toast.error('Please select a language');
-      return;
-    }
+  if (!lang) {
+    toast.error('Please select a language');
+    return;
+  }
 
-    navigate(`/editor/${lang}/${roomId}`, {
-      state: { username },
-    });
-  };
+  // ⭐ BLOCK ALL NON-UUID VALUES
+  if (!isValidUUID(roomId)) {
+    toast.error('Invalid Room ID ');
+    return;
+  }
+
+  navigate(`/editor/${lang}/${roomId}`, {
+    state: { username },
+  });
+};
+
 
   return (
     <div className="homePageWrapper">

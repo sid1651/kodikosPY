@@ -1,41 +1,78 @@
 // src/pages/LandingPage.jsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, useGoogleLogin } from "@react-oauth/google";
 import axios from "axios";
-import { useDispatch } from "react-redux";
-import { login } from "../Redux/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { login as reduxLogin } from "../Redux/authSlice";
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-   // <-- Redux hook
 
-  const handelSuccess = async (credentialResponse) => {
+  const { isLoggedIn } = useSelector((state) => state.auth);
+
+  // ⭐ Google Popup Login (for Create Room button)
+  const googlePopupLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const res = await axios.post(
+          "http://localhost:5000/api/auth/google-auth",
+          { token: tokenResponse.credential || tokenResponse.access_token }
+        );
+
+        const { user, JwtToken } = res.data;
+
+        // Save in Redux
+        dispatch(
+          reduxLogin({
+            user,
+            token: JwtToken,
+          })
+        );
+
+        navigate("/home");
+      } catch (err) {
+        console.log("❌ Popup error:", err);
+      }
+    },
+    onError: () => console.log("Google Popup Failed"),
+  });
+
+  // ⭐ Google Button Login Handler
+  const handleSuccess = async (credentialResponse) => {
     const token = credentialResponse.credential;
-    console.log("🟢 Google ID Token:", token);
 
     try {
       const res = await axios.post(
-        "http://localhost:500/api/auth/google-auth",
+        "http://localhost:5000/api/auth/google-auth",
         { token }
       );
 
-      const { user, jwtToken } = res.data;
+      const { user, JwtToken } = res.data;
 
-      // 🔥 Redux login
       dispatch(
-        login({
+        reduxLogin({
           user,
-          token: jwtToken,
+          token: JwtToken,
         })
       );
 
-      alert("Login Successful!");
       navigate("/home");
     } catch (err) {
       console.error("❌ Error:", err.response?.data || err.message);
     }
+  };
+
+  // ⭐ Create Room Button Behavior
+  const handleCreateRoom = () => {
+    if (isLoggedIn) {
+      // already logged in → no popup needed
+      return navigate("/home");
+    }
+
+    // not logged in → open Google popup
+    googlePopupLogin();
   };
 
   return (
@@ -53,15 +90,15 @@ const LandingPage = () => {
         </ul>
 
         <div className="navbar-actions">
-          <Link to="/sigin" className="btn-outline">Log In</Link>
-          <Link to="/signup" className="btn-primary">Sign Up</Link>
-
-          <div className="googel-btn">
-            <GoogleLogin
-              onSuccess={handelSuccess}
-              onError={() => console.log("Login Failed")}
-            />
-          </div>
+          {/* ⭐ Hide Google Button if logged in */}
+          {!isLoggedIn && (
+            <div className="google-btn">
+              <GoogleLogin
+                onSuccess={handleSuccess}
+                onError={() => console.log("Google Login Failed")}
+              />
+            </div>
+          )}
         </div>
       </nav>
 
@@ -74,7 +111,9 @@ const LandingPage = () => {
             The modern collaborative code editor where you can create, share,
             and build projects together in real-time.
           </p>
-          <button className="btn-secondary" onClick={() => navigate("/home")}>
+
+          {/* ⭐ Create Room Button */}
+          <button className="btn-secondary" onClick={handleCreateRoom}>
             Create Room
           </button>
         </div>
@@ -88,25 +127,18 @@ const LandingPage = () => {
             <img src="/download.png" alt="Real-time" />
             <h3>Real-time Collaboration</h3>
             <p>
-              Work with your team live — every keystroke is instantly visible to
-              everyone in the room.
+              Work live — every keystroke is instantly visible to everyone.
             </p>
           </div>
           <div className="feature-card">
             <img src="https://img.icons8.com/color/344/code-file.png" alt="Languages" />
             <h3>Multi-Language Support</h3>
-            <p>
-              From HTML, CSS, and JS to modern frameworks — code in your
-              favorite stack.
-            </p>
+            <p>Code in HTML, CSS, JS and more.</p>
           </div>
           <div className="feature-card">
             <img src="https://img.icons8.com/fluency/344/shield.png" alt="Secure" />
             <h3>Secure & Private</h3>
-            <p>
-              Rooms are protected and temporary. Share the link only with people
-              you trust.
-            </p>
+            <p>Temporary, protected rooms. Invite only your team.</p>
           </div>
         </div>
       </section>
@@ -115,21 +147,18 @@ const LandingPage = () => {
       <section className="about" id="about">
         <h2>About Kódikos</h2>
         <p>
-          Kódikos was built with developers in mind. Inspired by platforms like
-          CodePen and VSCode, it aims to bring the best real-time editing
-          experience for students, teams, and professionals.
-        </p>
-        <p>
-          With simplicity at its core, it helps you create rooms instantly and
-          focus on what matters: <strong>writing great code</strong>.
+          Kódikos is built for real-time editing and teamwork. 
+          Inspired by CodePen and VSCode.
         </p>
       </section>
 
-      {/* Call To Action */}
+      {/* CTA */}
       <section className="cta" id="create-room">
         <h2>Ready to Start?</h2>
-        <p>Create your coding room and invite your team today.</p>
-        <button className="btn-secondary" onClick={() => navigate("/home")}>
+        <p>Create your coding room today.</p>
+
+        {/* ⭐ Same create room button logic */}
+        <button className="btn-secondary" onClick={handleCreateRoom}>
           Create Room
         </button>
       </section>
@@ -137,10 +166,6 @@ const LandingPage = () => {
       {/* Footer */}
       <footer className="footer">
         <p>© 2025 Kódikos. Built with ❤️ for developers.</p>
-        <p>
-          <a href="https://github.com/">GitHub</a> |{" "}
-          <a href="https://linkedin.com/">LinkedIn</a>
-        </p>
       </footer>
     </div>
   );
