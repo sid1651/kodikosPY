@@ -85,6 +85,7 @@ const Home = () => {
             <option value="">Select Language</option>
             <option value="web">HTML / CSS / JS</option>
             <option value="py">Python</option>
+            <option value="CPP">C++</option>
           </select>
 
           <button className="btn joinBtn" onClick={joinRoom}>Join</button>

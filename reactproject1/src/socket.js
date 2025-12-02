@@ -13,3 +13,4 @@ export const initSocketJS = async () => io(`${backend}/js`, baseOptions);
 export const initSocketHTML = async () => io(`${backend}/html`, baseOptions);
 export const initSocketCSS = async () => io(`${backend}/css`, baseOptions);
 export const initSocketPython = async () => io(`${backend}/py`, baseOptions);
+export const initSocketCPP = async () => io(`${backend}/cpp`, baseOptions);

@@ -8,7 +8,9 @@ import  ACTIONS from "./Actions.js";
 import pythonRoutes from "./routes/pythonRoutes.js";
 import authRoute from "./routes/authRoute.js";
 import cors from "cors";
-import connectDb from "./config/db.js";
+import connectDb from "./config/db.js"
+import cppRoutes from "./routes/cppRoutes.js"
+
 
 dotenv.config();
 
@@ -90,6 +92,7 @@ setupNamespace("/js");
 setupNamespace("/html");
 setupNamespace("/css");
 setupNamespace("/py");
+setupNamespace("/cpp");
 
 /* ---------- FRONTEND FALLBACK ---------- */
 
@@ -98,6 +101,7 @@ setupNamespace("/py");
 
 app.use("/api/python", pythonRoutes);
 app.use("/api/auth",authRoute)
+app.use("/api/cpp",cppRoutes)
 
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, "build", "index.html"));

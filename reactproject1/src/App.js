@@ -9,6 +9,8 @@ import Signlog from './pages/signlog';
 import Signup from './pages/signup';
 import { ToastContainer } from 'react-toastify';
 import EditorPY from './pages/EditorPY';
+import EditorCPPP from './pages/EditorC++';
+
 
 
 
@@ -38,6 +40,7 @@ function App() {
         <Route path="/" element ={<LandingPage/>}></Route>
         <Route path="/home" element={<Home />} ></Route>
         <Route path="/editor/py/:roomId" element={<EditorPY/>} ></Route>
+        <Route path="/editor/CPP/:roomId" element={<EditorCPPP/>} ></Route>
         <Route path="/editor/web/:roomId" element={<EditorPage />} ></Route>
       </Routes>
       
