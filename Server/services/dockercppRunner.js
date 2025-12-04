@@ -9,7 +9,7 @@ import path from "path";
  * @param {string} input - Optional program input
  * @returns {Promise<{output: string}>} - Program output or errors
  */
-export const runCppCode = (code, input = "") => {
+export const runCppCode = (code, input) => {
   return new Promise((resolve, reject) => {
     // 1️⃣ Create temporary directory
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cpp-"));

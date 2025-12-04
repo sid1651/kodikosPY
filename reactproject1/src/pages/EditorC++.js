@@ -5,7 +5,8 @@ import ACTIONS from "../Actions";
 import { toast } from "react-hot-toast";
 import Client from "../components/Client";
 import axios from "axios";
-import EditorCPP from "../components/EditorC++"
+import EditorCPP from "../components/EditorC++";
+import LogoLoader from "../components/Loder";
 
 const EditorCPPP = () => {
   const socketRef = useRef(null);
@@ -13,6 +14,8 @@ const EditorCPPP = () => {
   const [output, setOutput] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [image, setImage] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false); // Loader state
 
   const { roomId } = useParams();
   const codeRef = useRef(localStorage.getItem(`cppcode_${roomId}`) || "");
@@ -29,7 +32,6 @@ const EditorCPPP = () => {
         username: location.state?.username || "Guest",
       });
 
-      // FIXED: .on() syntax
       socketRef.current.on(ACTIONS.JOINED, ({ clients, username }) => {
         if (username !== location.state?.username) {
           toast.success(`${username} joined`);
@@ -61,37 +63,44 @@ const EditorCPPP = () => {
     navigate("/");
   }
 
-
-
+  // ============================
+  // RUN CODE (with loader)
+  // ============================
   const cppcodeExecutor = async () => {
     try {
+      setLoading(true);
+      setOutput("");
+      setImage([]);
+
       const response = await axios.post(
         `${process.env.REACT_APP_BACKEND}/api/cpp/run`,
         {
           code: codeRef.current,
+          input: input, // input for cin
         }
       );
 
       if (response) {
         setOutput(response.data.output);
-        setImage(response.data.images);
       }
     } catch (error) {
-      console.error("Error executing Python code:", error);
+      console.error("Error executing C++ code:", error);
+      setOutput("Error running code.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const copyRoomId = async () => {
-      try {
-        await navigator.clipboard.writeText(roomId);
-        toast.success("Room ID copied!");
-      } catch {
-        toast.error("Failed to copy Room ID");
-      }
-    };
+    try {
+      await navigator.clipboard.writeText(roomId);
+      toast.success("Room ID copied!");
+    } catch {
+      toast.error("Failed to copy Room ID");
+    }
+  };
 
-
-    const clearOutput = () => {
+  const clearOutput = () => {
     setOutput("");
     setImage([]);
   };
@@ -99,12 +108,10 @@ const EditorCPPP = () => {
   const downloadCode = (code, roomId) => {
     const file = new Blob([code], { type: "text/plain" });
     const url = URL.createObjectURL(file);
-
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${roomId}.cpp`; // file name example: abc123.py
+    a.download = `${roomId}.cpp`;
     a.click();
-
     URL.revokeObjectURL(url);
   };
 
@@ -155,12 +162,17 @@ const EditorCPPP = () => {
           roomId={roomId}
           onCodeChange={(code) => {
             codeRef.current = code;
-            localStorage.setItem(`pycode_${roomId}`, code);
+            localStorage.setItem(`cppcode_${roomId}`, code);
           }}
         />
+
         <div className="buutton-holder">
-          <button className="btn run-button" onClick={() => cppcodeExecutor()}>
-            ▶️ Run Code
+          <button
+            className="btn run-button"
+            disabled={loading}
+            onClick={() => cppcodeExecutor()}
+          >
+            {loading ? "Running..." : "▶️ Run Code"}
           </button>
 
           <button className="btn run-button" onClick={() => clearOutput()}>
@@ -175,28 +187,44 @@ const EditorCPPP = () => {
           </button>
         </div>
 
+        {/* TERMINAL OUTPUT */}
         <pre className="terminalOutput">
           <div>Output:</div>
-          {output}
-          <div>
-            {image.map((img, index) => {
-              return (
-                <div key={index}>
-                  <p>{img.filename}</p>
-                  
-                  <img
-                    src={img.data}
-                    alt="Python Output"
-                    style={{
-                      maxWidth: "400px",
-                      border: "1px solid #ccc",
-                      marginBottom: "10px",
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
+
+          {loading ? (
+            <div className="terminal-loader-wrapper">
+              <LogoLoader />
+            </div>
+          ) : (
+            <div>
+              {/* INPUT BOX */}
+              <textarea
+                placeholder="Enter input for cin here..."
+                className="input-box"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                rows={4}
+              />
+
+              <div>{output}</div>
+            </div>
+          )}
+
+          {!loading &&
+            image.map((img, index) => (
+              <div key={index}>
+                <p>{img.filename}</p>
+                <img
+                  src={img.data}
+                  alt="CPP Output"
+                  style={{
+                    maxWidth: "400px",
+                    border: "1px solid #ccc",
+                    marginBottom: "10px",
+                  }}
+                />
+              </div>
+            ))}
         </pre>
       </div>
     </div>
