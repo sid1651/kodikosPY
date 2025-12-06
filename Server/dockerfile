@@ -1,0 +1,20 @@
+# Dockerfile for Node backend
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install Docker CLI + bash + curl (needed for Docker CLI)
+RUN apk add --no-cache docker bash curl
+
+# Copy package.json and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose backend port
+EXPOSE 5000
+
+# Start Node server
+CMD ["npm", "start"]
