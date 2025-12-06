@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import executionRoutes from "./routes/executionRoutes.js";
 import { initializePythonPool, getPythonPoolStats } from "./services/dockerPythonRunner.js";
 import { initializeCppPool, getCppPoolStats } from "./services/dockercppRunner.js";
+import { authenticateService } from "./middleware/authMiddleware.js";
 
 // Load environment variables
 dotenv.config();
@@ -14,6 +15,9 @@ const PORT = process.env.EXECUTION_SERVICE_PORT || 5001;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Apply authentication to all execution routes (except health/stats)
+app.use("/execute", authenticateService);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

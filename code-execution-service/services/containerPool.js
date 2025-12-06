@@ -17,6 +17,12 @@ class ContainerPool {
     this.busyContainers = new Set();
     this.initialized = false;
     this.initializing = false;
+
+    // Idle timeout in milliseconds (2 minutes default)
+    this.idleTimeout = parseInt(process.env.CONTAINER_IDLE_TIMEOUT || "120000", 10);
+
+    // Start idle cleanup interval
+    this.startIdleCleanup();
   }
 
   /**
@@ -55,6 +61,21 @@ class ContainerPool {
    */
   async createContainer() {
     try {
+      // Check if image exists locally, if not try to pull it
+      try {
+        await execAsync(`docker image inspect ${this.imageName} > /dev/null 2>&1`);
+      } catch (inspectError) {
+        // Image doesn't exist locally, try to pull it
+        console.log(`📥 Image ${this.imageName} not found locally, attempting to pull...`);
+        try {
+          await execAsync(`docker pull ${this.imageName}`);
+          console.log(`✅ Successfully pulled ${this.imageName}`);
+        } catch (pullError) {
+          // If pull fails, it might be a local-only image that needs to be built
+          throw new Error(`Image ${this.imageName} not found locally and could not be pulled. Please build it first.`);
+        }
+      }
+
       // Build docker run command with security restrictions
       const securityFlags = [
         "--network=none",
@@ -103,20 +124,26 @@ class ContainerPool {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
-    // If pool is empty, try to create a new container
+    // If pool is empty, try to create a new container on-demand
     if (this.availableContainers.length === 0) {
       const totalContainers = this.availableContainers.length + this.busyContainers.size;
       if (totalContainers < this.poolSize * 2) {
         // Allow up to 2x pool size during peak load
         try {
+          console.log(`📦 Pool empty, creating on-demand container for ${this.imageName}...`);
           await this.createContainer();
         } catch (error) {
-          console.error(`Failed to create emergency container:`, error);
+          console.error(`❌ Failed to create emergency container:`, error.message);
+          // If Docker images aren't built, provide helpful error
+          if (error.message.includes("not found locally")) {
+            throw new Error(`Docker image '${this.imageName}' not found. Please build it first: docker build -t ${this.imageName} ./${this.imageName.includes('python') ? 'python-runner' : 'cpp-runner'}`);
+          }
+          throw error;
         }
       }
     }
 
-    // Wait for a container to become available
+    // Wait for a container to become available (with retry)
     let attempts = 0;
     while (this.availableContainers.length === 0 && attempts < 50) {
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -124,7 +151,7 @@ class ContainerPool {
     }
 
     if (this.availableContainers.length === 0) {
-      throw new Error("No containers available in pool");
+      throw new Error(`No containers available in pool for ${this.imageName}. Docker images may not be built.`);
     }
 
     // Get container from pool
@@ -234,6 +261,44 @@ class ContainerPool {
       total: this.availableContainers.length + this.busyContainers.size,
       initialized: this.initialized,
     };
+  }
+
+  /**
+   * Start idle cleanup interval
+   * Removes containers that have been idle for more than idleTimeout
+   */
+  startIdleCleanup() {
+    // Check every 30 seconds for idle containers
+    setInterval(async () => {
+      await this.cleanupIdleContainers();
+    }, 30000); // Check every 30 seconds
+  }
+
+  /**
+   * Clean up containers that have been idle for too long
+   * Only removes containers from available pool (not busy ones)
+   */
+  async cleanupIdleContainers() {
+    const now = Date.now();
+    const containersToRemove = [];
+
+    // Check available containers for idle timeout
+    for (let i = this.availableContainers.length - 1; i >= 0; i--) {
+      const container = this.availableContainers[i];
+      const idleTime = now - (container.lastUsed || container.createdAt);
+
+      // If container has been idle for more than idleTimeout, mark for removal
+      if (idleTime > this.idleTimeout) {
+        containersToRemove.push(container.id);
+        this.availableContainers.splice(i, 1);
+      }
+    }
+
+    // Remove idle containers
+    if (containersToRemove.length > 0) {
+      console.log(`🧹 Removing ${containersToRemove.length} idle ${this.imageName} container(s) (idle > ${this.idleTimeout / 1000}s)`);
+      await Promise.all(containersToRemove.map((id) => this.removeContainer(id)));
+    }
   }
 
   /**

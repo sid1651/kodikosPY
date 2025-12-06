@@ -17,7 +17,7 @@ const LandingPage = () => {
     onSuccess: async (tokenResponse) => {
       try {
         const res = await axios.post(
-          "http://localhost:5000/api/auth/google-auth",
+          `${process.env.REACT_APP_BACKEND || "http://localhost:5002"}/api/auth/google-auth`,
           { token: tokenResponse.credential || tokenResponse.access_token }
         );
 
@@ -45,7 +45,7 @@ const LandingPage = () => {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/auth/google-auth",
+        `${process.env.REACT_APP_BACKEND || "http://localhost:5002"}/api/auth/google-auth`,
         { token }
       );
 

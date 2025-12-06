@@ -7,6 +7,7 @@ import axios from "axios";
 
 // Base URL for execution service
 const EXECUTION_SERVICE_URL = process.env.EXECUTION_SERVICE_URL || "http://localhost:5001";
+const EXECUTION_SERVICE_API_KEY = process.env.EXECUTION_SERVICE_API_KEY;
 
 /**
  * Execute Python code via execution service
@@ -15,10 +16,19 @@ const EXECUTION_SERVICE_URL = process.env.EXECUTION_SERVICE_URL || "http://local
  */
 export const executePythonCode = async (code) => {
   try {
+    const headers = {};
+    if (EXECUTION_SERVICE_API_KEY) {
+      headers['x-api-key'] = EXECUTION_SERVICE_API_KEY;
+      console.log("🔑 Sending API key to execution service");
+    } else {
+      console.warn("⚠️  EXECUTION_SERVICE_API_KEY not set in backend!");
+    }
+
     const response = await axios.post(`${EXECUTION_SERVICE_URL}/execute/python`, {
       code,
     }, {
       timeout: 10000, // 10 second timeout
+      headers,
     });
 
     return response.data;
@@ -47,11 +57,20 @@ export const executePythonCode = async (code) => {
  */
 export const executeCppCode = async (code, input) => {
   try {
+    const headers = {};
+    if (EXECUTION_SERVICE_API_KEY) {
+      headers['x-api-key'] = EXECUTION_SERVICE_API_KEY;
+      console.log("🔑 Sending API key to execution service");
+    } else {
+      console.warn("⚠️  EXECUTION_SERVICE_API_KEY not set in backend!");
+    }
+
     const response = await axios.post(`${EXECUTION_SERVICE_URL}/execute/cpp`, {
       code,
       input: input || "",
     }, {
       timeout: 10000, // 10 second timeout
+      headers,
     });
 
     return response.data;

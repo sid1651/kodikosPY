@@ -21,7 +21,23 @@ const io = new Server(server, {
   cors: { origin: "*" },
 });
 
-app.use(cors());
+// CORS configuration - allow all origins for development
+app.use(cors({
+  origin: true, // Allow all origins
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.path}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log(`  Body:`, JSON.stringify(req.body).substring(0, 200));
+  }
+  next();
+});
 
 /* ---------- FIX __dirname FOR ES MODULE ---------- */
 const __filename = fileURLToPath(import.meta.url);
@@ -108,6 +124,19 @@ app.use((req, res) => {
 });
 
 /* ---------- START SERVER ---------- */
-server.listen(5000, () => {
-  console.log(`🚀 Collaboration Server Running at 5000`);
+const PORT = process.env.PORT || 5000;
+
+server.listen(PORT, () => {
+  console.log(`🚀 Collaboration Server Running at ${PORT}`);
+  console.log(`📝 Request logging enabled`);
+  console.log(`🌐 CORS enabled for all origins`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+    console.error(`   Try: lsof -ti:${PORT} | xargs kill -9`);
+    console.error(`   Or change PORT in .env file`);
+  } else {
+    console.error('❌ Server error:', err);
+  }
+  process.exit(1);
 });
