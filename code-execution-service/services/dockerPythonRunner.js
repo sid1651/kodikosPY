@@ -3,7 +3,11 @@ import { promisify } from "util";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import dotenv from "dotenv";
 import ContainerPool from "./containerPool.js";
+
+// Load environment variables FIRST
+dotenv.config();
 
 const execAsync = promisify(exec);
 
@@ -11,8 +15,14 @@ const execAsync = promisify(exec);
 // Pool size can be configured via environment variable
 const PYTHON_POOL_SIZE = parseInt(process.env.PYTHON_POOL_SIZE || "5", 10);
 
-const pythonPool = new ContainerPool("kodikos-python", PYTHON_POOL_SIZE, {
+// Use Docker Hub image: sidhu1651/kodikos-python
+const PYTHON_IMAGE = process.env.PYTHON_DOCKER_IMAGE || "sidhu1651/kodikos-python";
+
+console.log(`🔧 Python Pool using image: ${PYTHON_IMAGE}`);
+
+const pythonPool = new ContainerPool(PYTHON_IMAGE, PYTHON_POOL_SIZE, {
   cmd: "python3 /app/run.py",
+  readOnly: false, // Matplotlib/image generation needs a writable /tmp
 });
 
 /**

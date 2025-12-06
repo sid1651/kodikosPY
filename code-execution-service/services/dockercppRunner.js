@@ -3,7 +3,11 @@ import { promisify } from "util";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import dotenv from "dotenv";
 import ContainerPool from "./containerPool.js";
+
+// Load environment variables FIRST
+dotenv.config();
 
 const execAsync = promisify(exec);
 
@@ -11,8 +15,14 @@ const execAsync = promisify(exec);
 // Pool size can be configured via environment variable
 const CPP_POOL_SIZE = parseInt(process.env.CPP_POOL_SIZE || "5", 10);
 
-const cppPool = new ContainerPool("cpp-runner", CPP_POOL_SIZE, {
+// Use Docker Hub image: sidhu1651/cpp-runner
+const CPP_IMAGE = process.env.CPP_DOCKER_IMAGE || "sidhu1651/cpp-runner";
+
+console.log(`🔧 C++ Pool using image: ${CPP_IMAGE}`);
+
+const cppPool = new ContainerPool(CPP_IMAGE, CPP_POOL_SIZE, {
   cmd: "tail -f /dev/null", // Keep container running
+  readOnly: false, // Need writable FS to copy/compile user code
   flags: [
     "--network=none",
     "--pids-limit=20",
@@ -48,6 +58,8 @@ export const getCppPoolStats = () => {
  */
 export const runCppCode = (code, input) => {
   return new Promise(async (resolve, reject) => {
+    process.stdout.write(`🔍 DEBUG runCppCode START: code length=${code?.length}, input=${input || 'none'}\n`);
+    process.stdout.write(`🔍 DEBUG runCppCode: cppPool instanceId=${cppPool.instanceId}, imageName="${cppPool.imageName}"\n`);
     let containerId = null;
     let tempDir = null;
 
@@ -62,6 +74,8 @@ export const runCppCode = (code, input) => {
       fs.writeFileSync(inputPath, input || "");
 
       // 3️⃣ Get container from pool (FAST - no cold start!)
+      console.log(`🔍 DEBUG runCppCode: About to call cppPool.getContainer(), cppPool instance:`, cppPool);
+      console.log(`🔍 DEBUG runCppCode: cppPool.imageName = "${cppPool.imageName}"`);
       containerId = await cppPool.getContainer();
 
       // 4️⃣ Copy files into container
@@ -71,19 +85,17 @@ export const runCppCode = (code, input) => {
       }
 
       // 5️⃣ Compile and execute inside container
-      const compileAndRunCmd = `
-        cd /app && \
-        g++ code.cpp -o program 2> errors.txt && \
-        if [ -s errors.txt ]; then \
-          echo "ERROR::$(cat errors.txt)"; \
-        else \
-          if [ -f input.txt ]; then \
-            timeout 5s ./program < input.txt; \
-          else \
-            timeout 5s ./program; \
-          fi; \
-        fi
-      `;
+      // Keep the script simple to avoid shell parsing issues inside sh -c
+      const compileAndRunCmd =
+        'cd /app; ' +
+        'g++ code.cpp -o program 2> errors.txt; ' +
+        'if [ -s errors.txt ]; then ' +
+          'echo "ERROR::$(cat errors.txt)"; ' +
+        'elif [ -f input.txt ]; then ' +
+          'timeout 5s ./program < input.txt; ' +
+        'else ' +
+          'timeout 5s ./program; ' +
+        'fi';
 
       const { stdout, stderr } = await execAsync(
         `docker exec ${containerId} sh -c ${JSON.stringify(compileAndRunCmd)}`,
@@ -110,6 +122,8 @@ export const runCppCode = (code, input) => {
       resolve({ output: stdout || stderr });
 
     } catch (error) {
+      console.error(`🔍 DEBUG runCppCode catch: error.message = "${error.message}"`);
+      console.error(`🔍 DEBUG runCppCode catch: error.stack =`, error.stack?.substring(0, 200));
       // Return container to pool even on error
       if (containerId) {
         await cppPool.returnContainer(containerId).catch(() => {});
@@ -129,6 +143,7 @@ export const runCppCode = (code, input) => {
         return resolve({ output: "Execution timeout: Code took too long to run" });
       }
 
+      console.error(`🔍 DEBUG runCppCode: Resolving with error message: "${error.message}"`);
       resolve({ output: error.message || "Compilation/execution error" });
     }
   });

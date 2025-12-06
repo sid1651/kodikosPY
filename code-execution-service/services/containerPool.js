@@ -10,13 +10,39 @@ const execAsync = promisify(exec);
  */
 class ContainerPool {
   constructor(imageName, poolSize = 5, containerConfig = {}) {
-    this.imageName = imageName;
+    console.log(`🔍 DEBUG constructor: Received imageName = "${imageName}", type = ${typeof imageName}`);
+    // Store original imageName
+    const _imageName = imageName;
+
+    // Create a getter that logs every access
+    Object.defineProperty(this, 'imageName', {
+      get() {
+        console.log(`🔍 DEBUG imageName GET: Returning "${_imageName}"`);
+        return _imageName;
+      },
+      set(newValue) {
+        console.error(`🚨 ALERT: Attempted to modify imageName from "${_imageName}" to "${newValue}"!`);
+        // Don't allow modification
+      },
+      enumerable: true,
+      configurable: false
+    });
+
     this.poolSize = poolSize;
     this.containerConfig = containerConfig;
+    // Default to writable rootfs; allow callers to opt in to read-only containers
+    this.readOnlyRootfs = containerConfig.readOnly ?? false;
+    console.log(`🏗️ ContainerPool created with imageName: ${this.imageName}`);
+    console.log(`🔍 DEBUG constructor: this.imageName = "${this.imageName}" after assignment`);
+
     this.availableContainers = [];
     this.busyContainers = new Set();
     this.initialized = false;
     this.initializing = false;
+
+    // Add unique instance ID for debugging
+    this.instanceId = `pool-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`🔍 DEBUG: Pool instance created with ID: ${this.instanceId}, imageName: ${this.imageName}`);
 
     // Idle timeout in milliseconds (2 minutes default)
     this.idleTimeout = parseInt(process.env.CONTAINER_IDLE_TIMEOUT || "120000", 10);
@@ -66,20 +92,26 @@ class ContainerPool {
         await execAsync(`docker image inspect ${this.imageName} > /dev/null 2>&1`);
       } catch (inspectError) {
         // Image doesn't exist locally, try to pull it
-        console.log(`📥 Image ${this.imageName} not found locally, attempting to pull...`);
+        console.log(`📥 Image ${this.imageName} not found locally, attempting to pull from Docker Hub...`);
         try {
-          await execAsync(`docker pull ${this.imageName}`);
-          console.log(`✅ Successfully pulled ${this.imageName}`);
+          // Use linux/amd64 platform for compatibility (works on both Intel and Apple Silicon via Rosetta)
+          await execAsync(`docker pull --platform linux/amd64 ${this.imageName}`);
+          console.log(`✅ Successfully pulled ${this.imageName} from Docker Hub`);
         } catch (pullError) {
-          // If pull fails, it might be a local-only image that needs to be built
-          throw new Error(`Image ${this.imageName} not found locally and could not be pulled. Please build it first.`);
+          // Check if Docker daemon is running
+          try {
+            await execAsync(`docker info > /dev/null 2>&1`);
+          } catch (dockerError) {
+            throw new Error(`Docker daemon is not running. Please start Docker Desktop and try again.`);
+          }
+          // If pull fails and Docker is running, the image might not exist on Docker Hub
+          throw new Error(`Image ${this.imageName} not found locally and could not be pulled from Docker Hub. Please check if the image exists on Docker Hub or start Docker Desktop.`);
         }
       }
 
       // Build docker run command with security restrictions
       const securityFlags = [
         "--network=none",
-        "--read-only",
         "--pids-limit=20",
         "--memory=300m",
         "--cpus=0.5",
@@ -87,9 +119,15 @@ class ContainerPool {
         "--security-opt no-new-privileges",
       ];
 
-      // Add custom config flags
+      // Only lock the root filesystem when the pool explicitly opts in
+      if (this.readOnlyRootfs) {
+        securityFlags.push("--read-only");
+      }
+
+      // Add custom config flags (remove duplicates)
       const customFlags = this.containerConfig.flags || [];
-      const allFlags = [...securityFlags, ...customFlags].join(" \\\n        ");
+      const allFlagsSet = new Set([...securityFlags, ...customFlags]);
+      const allFlags = Array.from(allFlagsSet).join(" \\\n        ");
 
       const runCmd = `docker run -d -i ${allFlags} ${this.imageName} ${this.containerConfig.cmd || ""}`.trim();
 
@@ -108,7 +146,19 @@ class ContainerPool {
       console.log(`✅ Created ${this.imageName} container: ${containerId.substring(0, 12)}`);
       return containerId;
     } catch (error) {
-      console.error(`❌ Failed to create ${this.imageName} container:`, error.message);
+      process.stdout.write(`❌ Failed to create ${this.imageName} container: ${error.message}\n`);
+      process.stdout.write(`🔍 DEBUG createContainer catch: this.imageName = "${this.imageName}"\n`);
+      process.stdout.write(`🔍 DEBUG createContainer catch: error.message = "${error.message}"\n`);
+      process.stdout.write(`🔍 DEBUG createContainer catch: error.constructor = ${error.constructor?.name}\n`);
+      process.stdout.write(`🔍 DEBUG createContainer catch: Full error = ${JSON.stringify(error, Object.getOwnPropertyNames(error))}\n`);
+
+      // If the error message contains the old image name, replace it with the correct one
+      if (error.message && !error.message.includes(this.imageName) && (error.message.includes('cpp-runner') || error.message.includes('kodikos-python'))) {
+        const correctedMessage = error.message.replace(/cpp-runner|kodikos-python/g, this.imageName);
+        process.stdout.write(`🔍 DEBUG: Replacing old image name, new message = "${correctedMessage}"\n`);
+        throw new Error(correctedMessage);
+      }
+      process.stdout.write(`🔍 DEBUG: Re-throwing original error as-is\n`);
       throw error;
     }
   }
@@ -119,10 +169,14 @@ class ContainerPool {
    * @returns {Promise<string>} Container ID
    */
   async getContainer() {
+    process.stdout.write(`🔍 DEBUG getContainer START: instanceId=${this.instanceId}, imageName="${this.imageName}", available=${this.availableContainers.length}, busy=${this.busyContainers.size}\n`);
     // Wait for initialization if still initializing
     while (this.initializing) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
+
+    // DEBUG: Log the actual imageName at the start of getContainer
+    process.stdout.write(`🔍 DEBUG getContainer AFTER WAIT: instanceId=${this.instanceId}, imageName="${this.imageName}", available=${this.availableContainers.length}\n`);
 
     // If pool is empty, try to create a new container on-demand
     if (this.availableContainers.length === 0) {
@@ -130,14 +184,24 @@ class ContainerPool {
       if (totalContainers < this.poolSize * 2) {
         // Allow up to 2x pool size during peak load
         try {
-          console.log(`📦 Pool empty, creating on-demand container for ${this.imageName}...`);
+          // Use process.stdout.write for immediate output (no buffering)
+          process.stdout.write(`📦 Pool empty, creating on-demand container for ${this.imageName}...\n`);
+          process.stdout.write(`🔍 DEBUG getContainer: this.imageName = "${this.imageName}", typeof = ${typeof this.imageName}\n`);
+          process.stdout.write(`🔍 DEBUG getContainer: this object keys = ${Object.keys(this).join(', ')}\n`);
           await this.createContainer();
         } catch (error) {
           console.error(`❌ Failed to create emergency container:`, error.message);
-          // If Docker images aren't built, provide helpful error
-          if (error.message.includes("not found locally")) {
-            throw new Error(`Docker image '${this.imageName}' not found. Please build it first: docker build -t ${this.imageName} ./${this.imageName.includes('python') ? 'python-runner' : 'cpp-runner'}`);
+          console.error(`🔍 DEBUG: Error occurred with imageName = "${this.imageName}"`);
+          console.error(`🔍 DEBUG: Error stack:`, error.stack?.substring(0, 500));
+          console.error(`🔍 DEBUG: Error constructor:`, error.constructor?.name);
+          // If Docker images aren't found, provide helpful error
+          if (error.message.includes("not found locally") || error.message.includes("not found")) {
+            const errorMsg = `[NEW-ERROR-FORMAT] Docker image '${this.imageName}' not found. Please ensure Docker is running and the image exists on Docker Hub. Image: ${this.imageName}`;
+            console.error(`🔍 DEBUG: Throwing NEW error with imageName = "${this.imageName}"`);
+            console.error(`🔍 DEBUG: Error message will be: "${errorMsg}"`);
+            throw new Error(errorMsg);
           }
+          console.error(`🔍 DEBUG: Re-throwing original error: "${error.message}"`);
           throw error;
         }
       }
@@ -151,7 +215,7 @@ class ContainerPool {
     }
 
     if (this.availableContainers.length === 0) {
-      throw new Error(`No containers available in pool for ${this.imageName}. Docker images may not be built.`);
+      throw new Error(`No containers available in pool for ${this.imageName}. Please ensure Docker is running and the image '${this.imageName}' exists on Docker Hub.`);
     }
 
     // Get container from pool
@@ -253,6 +317,7 @@ class ContainerPool {
    * @returns {Object} Pool stats
    */
   getStats() {
+    console.log(`🔍 DEBUG getStats: this.imageName = "${this.imageName}", available = ${this.availableContainers.length}, busy = ${this.busyContainers.size}`);
     return {
       image: this.imageName,
       poolSize: this.poolSize,
@@ -320,3 +385,4 @@ class ContainerPool {
 
 export default ContainerPool;
 
+// FILE VERSION: 1765025130

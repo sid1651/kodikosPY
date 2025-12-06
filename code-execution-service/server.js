@@ -12,8 +12,36 @@ dotenv.config();
 const app = express();
 const PORT = process.env.EXECUTION_SERVICE_PORT || 5001;
 
+// CORS configuration - allow backend service and frontend
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Get allowed origins from environment
+    const allowedOrigins = process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',')
+      : ['*']; // Default to allow all in development
+
+    // Allow all origins if '*' is specified
+    if (allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+
+    // Check if origin is allowed
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Apply authentication to all execution routes (except health/stats)

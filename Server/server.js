@@ -1,7 +1,10 @@
+// Load environment variables FIRST before any other imports
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
-import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import  ACTIONS from "./Actions.js";
@@ -11,9 +14,6 @@ import cors from "cors";
 import connectDb from "./config/db.js"
 import cppRoutes from "./routes/cppRoutes.js"
 
-
-dotenv.config();
-
 const app = express();
 const server = http.createServer(app);
 
@@ -21,13 +21,35 @@ const io = new Server(server, {
   cors: { origin: "*" },
 });
 
-// CORS configuration - allow all origins for development
-app.use(cors({
-  origin: true, // Allow all origins
+// CORS configuration - allow frontend and execution service
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Get allowed origins from environment
+    const allowedOrigins = process.env.CORS_ORIGIN 
+      ? process.env.CORS_ORIGIN.split(',')
+      : ['*']; // Default to allow all in development
+    
+    // Allow all origins if '*' is specified
+    if (allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is allowed
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+};
+
+app.use(cors(corsOptions));
 
 // Log all incoming requests
 app.use((req, res, next) => {

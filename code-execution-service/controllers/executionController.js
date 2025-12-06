@@ -1,8 +1,5 @@
 import { runPythonInDocker } from "../services/dockerPythonRunner.js";
 import { runCppCode } from "../services/dockercppRunner.js";
-import fs from "fs";
-import path from "path";
-
 /**
  * Execute Python code and return output with images
  * Handles matplotlib figure generation and cleanup
@@ -18,45 +15,12 @@ export const executePython = async (req, res) => {
 
     console.log("🔥 Running Python Code:\n", code);
 
-    // Run Python → returns images + tempDir
-    const { output, images, tempDir } = await runPythonInDocker(code);
-
-    const outputFolder = path.join(tempDir, "output");
-    let finalImages = [];
-
-    // Convert images to Base64
-    if (fs.existsSync(outputFolder)) {
-      const files = fs.readdirSync(outputFolder);
-
-      for (const file of files) {
-        const filePath = path.join(outputFolder, file);
-
-        if (
-          file.endsWith(".png") ||
-          file.endsWith(".jpg") ||
-          file.endsWith(".jpeg")
-        ) {
-          const imgBuffer = fs.readFileSync(filePath);
-          finalImages.push({
-            filename: file,
-            data: `data:image/png;base64,${imgBuffer.toString("base64")}`,
-          });
-        }
-      }
-    }
-
-    // Cleanup temp directory
-    if (tempDir) {
-      try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      } catch (cleanupError) {
-        console.error("Cleanup error:", cleanupError);
-      }
-    }
+    // Runner already handles temp dirs and image extraction
+    const { output, images = [] } = await runPythonInDocker(code);
 
     return res.json({
       output,
-      images: finalImages,
+      images,
     });
 
   } catch (error) {
@@ -70,6 +34,7 @@ export const executePython = async (req, res) => {
  * Handles compilation and execution with optional input
  */
 export const executeCpp = async (req, res) => {
+  process.stdout.write(`🔍 DEBUG executeCpp START: code=${req.body?.code?.substring(0, 20)}...\n`);
   try {
     const { code, input } = req.body;
 
@@ -78,13 +43,15 @@ export const executeCpp = async (req, res) => {
       return res.status(400).json({ error: "Code is required" });
     }
 
-    console.log("🔥 Running C++ Code");
+    process.stdout.write(`🔥 Running C++ Code\n`);
     if (input) {
-      console.log("Input:", input);
+      process.stdout.write(`Input: ${input}\n`);
     }
 
     // Execute C++ code
+    process.stdout.write(`🔍 DEBUG executeCpp: About to call runCppCode\n`);
     const result = await runCppCode(code, input);
+    process.stdout.write(`🔍 DEBUG executeCpp: runCppCode returned: ${JSON.stringify(result).substring(0, 100)}\n`);
     return res.json(result);
 
   } catch (err) {
@@ -92,4 +59,3 @@ export const executeCpp = async (req, res) => {
     return res.status(500).json({ error: "Internal server error", message: err.message });
   }
 };
-

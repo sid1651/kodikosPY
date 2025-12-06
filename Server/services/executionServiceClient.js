@@ -7,7 +7,9 @@ import axios from "axios";
 
 // Base URL for execution service
 const EXECUTION_SERVICE_URL = process.env.EXECUTION_SERVICE_URL || "http://localhost:5001";
-const EXECUTION_SERVICE_API_KEY = process.env.EXECUTION_SERVICE_API_KEY;
+
+// Get API key from environment (read at runtime, not module load time)
+const getApiKey = () => process.env.EXECUTION_SERVICE_API_KEY;
 
 /**
  * Execute Python code via execution service
@@ -16,9 +18,10 @@ const EXECUTION_SERVICE_API_KEY = process.env.EXECUTION_SERVICE_API_KEY;
  */
 export const executePythonCode = async (code) => {
   try {
+    const apiKey = getApiKey();
     const headers = {};
-    if (EXECUTION_SERVICE_API_KEY) {
-      headers['x-api-key'] = EXECUTION_SERVICE_API_KEY;
+    if (apiKey) {
+      headers['x-api-key'] = apiKey;
       console.log("🔑 Sending API key to execution service");
     } else {
       console.warn("⚠️  EXECUTION_SERVICE_API_KEY not set in backend!");
@@ -57,9 +60,10 @@ export const executePythonCode = async (code) => {
  */
 export const executeCppCode = async (code, input) => {
   try {
+    const apiKey = getApiKey();
     const headers = {};
-    if (EXECUTION_SERVICE_API_KEY) {
-      headers['x-api-key'] = EXECUTION_SERVICE_API_KEY;
+    if (apiKey) {
+      headers['x-api-key'] = apiKey;
       console.log("🔑 Sending API key to execution service");
     } else {
       console.warn("⚠️  EXECUTION_SERVICE_API_KEY not set in backend!");
