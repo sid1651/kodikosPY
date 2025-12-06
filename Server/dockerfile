@@ -10,7 +10,7 @@ RUN apk add --no-cache docker bash curl
 COPY package*.json ./
 RUN npm install
 
-# Copy source code
+
 COPY . .
 
 # Expose backend port
