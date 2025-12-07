@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # 1. The main application server (Node.js backend + frontend serving)
+  app:
+    container_name: kodikos-app
+    build:
+      context: ./Server  # Build from the main Server folder
+      dockerfile: dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      # --- Database Connection (Provided by you) ---
+      - MONGODB_URI=mongodb+srv://atlas:nsrnv369@cluster0.nfajaeq.mongodb.net 
+      
+      # --- Google Authentication (from reactproject1/.env) ---
+      # Used by google-auth-library to verify the ID token audience.
+      - GOOGLE_CLIENT_ID=536749306921-cubtiapc7il77kjq3lk49n0dt5onpe8m.apps.googleusercontent.com
+      
+      # --- JWT Secret (CRITICAL SECURITY VALUE) ---
+      - JWT_SECRET=supersecretkey 
+      
+    restart: always
+    # CRITICAL for code execution (allows Node.js to spawn other Docker containers)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # 2. Python Code Runner Image (Builds the environment for Python execution)
+  python-runner:
+    image: kodikos-python-runner:latest
+    build:
+      context: ./Server/python-runner
+      dockerfile: Dockerfile
+    command: ["echo", "Python Runner Image Built"]
+
+  # 3. C++ Code Runner Image (Builds the environment for C++ compilation/execution)
+  cpp-runner:
+    image: kodikos-cpp-runner:latest
+    build:
+      context: ./Server/cpp-runner
+      dockerfile: dockerfile
+    command: ["echo", "C++ Runner Image Built"]
